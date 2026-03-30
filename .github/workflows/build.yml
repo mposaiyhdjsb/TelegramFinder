@@ -1,0 +1,113 @@
+name: Build Telegram Finder APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Create Android Project Magic
+      run: |
+        mkdir -p app/src/main/java/com/example/telegramfinder
+        mkdir -p app/src/main/res/layout
+        mkdir -p app/src/main/res/values
+        mkdir -p app/src/main/res/xml
+        
+        echo "Creating build.gradle..."
+        cat << 'EOF' > build.gradle
+        buildscript {
+            repositories { google(); mavenCentral() }
+            dependencies { classpath 'com.android.tools.build:gradle:8.1.0' }
+        }
+        allprojects {
+            repositories { google(); mavenCentral() }
+        }
+        EOF
+        
+        echo "Creating app/build.gradle..."
+        cat << 'EOF' > app/build.gradle
+        plugins { id 'com.android.application' }
+        android {
+            namespace 'com.example.telegramfinder'
+            compileSdk 34
+            defaultConfig {
+                applicationId "com.example.telegramfinder"
+                minSdk 24
+                targetSdk 34
+                versionCode 1
+                versionName "1.0"
+            }
+        }
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+        }
+        EOF
+        
+        echo "Creating settings.gradle..."
+        cat << 'EOF' > settings.gradle
+        rootProject.name = "TelegramFinder"
+        include ':app'
+        EOF
+        
+        echo "Creating AndroidManifest.xml..."
+        cat << 'EOF' > app/src/main/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+            <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+            <application android:label="Telegram Finder" android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                <activity android:name=".MainActivity" android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        EOF
+        
+        echo "Creating MainActivity.java..."
+        cat << 'EOF' > app/src/main/java/com/example/telegramfinder/MainActivity.java
+        package com.example.telegramfinder;
+        import android.app.Activity;
+        import android.os.Bundle;
+        import android.widget.TextView;
+        import android.graphics.Color;
+        import android.view.Gravity;
+        public class MainActivity extends Activity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                TextView tv = new TextView(this);
+                tv.setText("سلام! اپلیکیشن Telegram Finder با موفقیت ساخته شد!\n\nمنتظر اتصال به دیتابیس...");
+                tv.setTextSize(20f);
+                tv.setTextColor(Color.BLACK);
+                tv.setBackgroundColor(Color.WHITE);
+                tv.setGravity(Gravity.CENTER);
+                tv.setPadding(50, 50, 50, 50);
+                setContentView(tv);
+            }
+        }
+        EOF
+        
+        gradle wrapper --gradle-version 8.2
+
+    - name: Build APK with Gradle
+      run: ./gradlew assembleDebug
+
+    - name: Upload APK File
+      uses: actions/upload-artifact@v4
+      with:
+        name: TelegramFinder-APK
+        path: app/build/outputs/apk/debug/app-debug.apk
+
